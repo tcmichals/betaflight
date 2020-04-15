@@ -22,7 +22,7 @@
 
 #define NOINLINE __attribute__((noinline))
 
-#if !defined(UNIT_TEST) && !defined(SIMULATOR_BUILD) && !(USBD_DEBUG_LEVEL > 0)
+#if !defined(UNIT_TEST) && !defined(SIMULATOR_BUILD) && !defined(LINUX) && !(USBD_DEBUG_LEVEL > 0)
 #pragma GCC poison sprintf snprintf
 #endif
 
@@ -114,6 +114,11 @@
 #ifndef STM32F1
 #define STM32F1
 #endif
+#elif defined(LINUX)
+// Chip Unique ID on F103
+#define U_ID_0 (0)
+#define U_ID_1 (1)
+#define U_ID_2 (2)
 
 #elif defined(SIMULATOR_BUILD)
 

@@ -168,7 +168,7 @@ uint32_t IO_EXTI_Line(IO_t io)
     return 1 << IO_GPIOPinIdx(io);
 #elif defined(STM32F3)
     return IO_GPIOPinIdx(io);
-#elif defined(SIMULATOR_BUILD)
+#elif defined(SIMULATOR_BUILD) || defined(LINUX)
     return 0;
 #else
 # error "Unknown target type"

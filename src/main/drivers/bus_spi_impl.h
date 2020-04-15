@@ -26,6 +26,8 @@
 #define MAX_SPI_PIN_SEL 4
 #elif defined(STM32H7)
 #define MAX_SPI_PIN_SEL 5
+#elif defined(LINUX)
+#define MAX_SPI_PIN_SEL 2
 #else
 #error Unknown MCU family
 #endif

@@ -76,7 +76,7 @@ uint8_t eepromData[EEPROM_SIZE];
 # elif defined(STM32G4)
 #  define FLASH_PAGE_SIZE                 ((uint32_t)0x800) // 2K page
 // SIMULATOR
-# elif defined(SIMULATOR_BUILD)
+# elif defined(SIMULATOR_BUILD) || defined(LINUX)
 #  define FLASH_PAGE_SIZE                 (0x400)
 # else
 #  error "Flash page size not defined for target."

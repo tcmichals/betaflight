@@ -1,0 +1,164 @@
+
+
+TARGET ?= LINUX
+
+FLIGHT_CON	?=PC
+
+ifeq ($(FLIGHT_CON), PC)
+    COMPILER_PREFIX := 
+    $(info    PC TARGET)
+else
+$(info    EMBEDDED LINUX TARGET)
+COMPILER_PREFIX := 
+endif
+
+
+
+CROSS_CC    := $(CCACHE) $(SDK_PREFIX)gcc
+CROSS_CXX   := $(CCACHE) $(SDK_PREFIX)g++
+CROSS_GDB   := $(SDK_PREFIX)gdb
+OBJCOPY     := $(SDK_PREFIX)objcopy
+OBJDUMP     := $(SDK_PREFIX)objdump
+SIZE        := $(SDK_PREFIX)size
+
+
+
+FORKNAME      = betaflight
+
+# Working directories
+ROOT            := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+SRC_DIR         := $(ROOT)/src/main
+OBJECT_DIR      := $(ROOT)/obj/main
+BIN_DIR         := $(ROOT)/obj
+
+
+
+REVISION := norevision
+ifeq ($(shell git diff --shortstat),)
+REVISION := $(shell git log -1 --format="%h")
+endif
+
+FC_VER_MAJOR := $(shell grep " FC_VERSION_MAJOR" src/main/build/version.h | awk '{print $$3}' )
+FC_VER_MINOR := $(shell grep " FC_VERSION_MINOR" src/main/build/version.h | awk '{print $$3}' )
+FC_VER_PATCH := $(shell grep " FC_VERSION_PATCH" src/main/build/version.h | awk '{print $$3}' )
+
+FC_VER := $(FC_VER_MAJOR).$(FC_VER_MINOR).$(FC_VER_PATCH)
+
+DIRS_OF_SRC := blackbox \
+		build \
+		cli \
+		cms \
+		common \
+		config \
+		drivers \
+		fc \
+		flight \
+		io \
+		msc \
+		msp \
+		osd \
+		pg \
+		rx \
+		scheduler \
+		sensors \
+		target\$(TARGET) \
+		telemetry \
+		.
+
+STRUCTURE := $(addprefix src/main/,$(DIRS_OF_SRC))    
+C_SRC_FILES := $(addsuffix /*.c,$(STRUCTURE))
+
+
+DIR_AND_SRC := $(wildcard $(C_SRC_FILES))
+
+SRC = $(C_SRC_FILES)
+
+CSOURCES        := $(shell find $(SRC_DIR) -name '*.c')
+CXXSOURCES		:= $(shell find $(SRC_DIR) -name '*.cxx')
+TARGET_DIR     = $(ROOT)/src/main/target/$(BASE_TARGET)
+TARGET_DIR_C_SRC = $(notdir $(wildcard $(TARGET_DIR)/*.c))
+TARGET_DIR_CXX_SRC = $(notdir $(wildcard $(TARGET_DIR)/*.cxx))
+
+#
+# Default Tool options - can be overridden in {mcu}.mk files.
+#
+ifeq ($(DEBUG),GDB)
+OPTIMISE_DEFAULT      := -Og
+
+LTO_FLAGS             := $(OPTIMISE_DEFAULT)
+DEBUG_FLAGS            = -ggdb3 -DDEBUG
+else
+ifeq ($(DEBUG),INFO)
+DEBUG_FLAGS            = -ggdb3
+endif
+OPTIMISATION_BASE     := -flto -fuse-linker-plugin -ffast-math
+OPTIMISE_DEFAULT      := -O2
+OPTIMISE_SPEED        := -Ofast
+OPTIMISE_SIZE         := -Os
+
+LTO_FLAGS             := $(OPTIMISATION_BASE) $(OPTIMISE_SPEED)
+endif
+
+
+CFLAGS     += $(ARCH_FLAGS) \
+              $(addprefix -D,$(OPTIONS)) \
+              $(addprefix -I,$(INCLUDE_DIRS)) \
+              $(DEBUG_FLAGS) \
+              -std=gnu11 \
+              -Wall -Wextra -Wunsafe-loop-optimizations -Wdouble-promotion \
+              -ffunction-sections \
+              -fdata-sections \
+              -fno-common \
+              -pedantic \
+              $(TEMPORARY_FLAGS) \
+              $(DEVICE_FLAGS) \
+              -D_GNU_SOURCE \
+              -D$(TARGET) \
+              $(TARGET_FLAGS) \
+              -D'__FORKNAME__="$(FORKNAME)"' \
+              -D'__TARGET__="$(TARGET)"' \
+              -D'__REVISION__="$(REVISION)"' \
+              -save-temps=obj \
+              -MMD -MP \
+              $(EXTRA_FLAGS)
+
+LD_FLAGS     = -lm \
+              -nostartfiles \
+              --specs=nano.specs \
+              -lc \
+              -lnosys \
+              $(ARCH_FLAGS) \
+              $(LTO_FLAGS) \
+              $(DEBUG_FLAGS) \
+              -static \
+              -Wl,-gc-sections,-Map,$(TARGET_MAP) \
+              -Wl,-L$(LINKER_DIR) \
+              -Wl,--cref \
+              -Wl,--no-wchar-size-warning \
+              -Wl,--print-memory-usage \
+              -T$(LD_SCRIPT) \
+               $(EXTRA_LD_FLAGS)
+
+TARGET_OBJS     = $(addsuffix .o,$(addprefix $(OBJECT_DIR)/$(TARGET)/,$(basename $(SRC))))
+
+
+$(TARGET_ELF): $(TARGET_OBJS) $(LD_SCRIPT)
+	@echo "Linking $(TARGET)" "$(STDOUT)"
+	$(CROSS_CXX) -o $@ $(filter-out %.ld,$^) $(LD_FLAGS)
+
+$(OBJECT_DIR)/$(TARGET)/%.o: %.c
+	mkdir -p $(dir $@)
+	$(CROSS_CC)
+
+$(OBJECT_DIR)/$(TARGET)/%.o: %.cxx
+	mkdir -p $(dir $@)
+	$(CROSS_CXX)
+
+debug:
+	@echo  $(DIR_AND_SRC)
+
+
+# rebuild everything when makefile changes
+$(TARGET_OBJS): Makefile.LINUX $(TARGET_DIR)/target.mk $(wildcard make/*)
+
+

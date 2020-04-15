@@ -39,6 +39,25 @@ typedef struct spiDefaultConfig_s {
     dmaoptValue_t rxDmaopt;
 } spiDefaultConfig_t;
 
+#ifdef LINUX
+const spiDefaultConfig_t spiDefaultConfig[] = {
+#ifdef USE_SPI_DEVICE_1
+    { SPIDEV_1, 0, 0, 0, 0, 0 },
+#endif
+#ifdef USE_SPI_DEVICE_2
+
+    { SPIDEV_2, 0, 0, 0, 0, 0 },
+#endif
+#ifdef USE_SPI_DEVICE_3
+    { SPIDEV_3, 0, 0, 0, 0, 0 },
+
+#endif
+#ifdef USE_SPI_DEVICE_4
+    { SPIDEV_4, 0, 0, 0, 0, 0 },
+
+#endif
+};
+#else
 const spiDefaultConfig_t spiDefaultConfig[] = {
 #ifdef USE_SPI_DEVICE_1
     { SPIDEV_1, IO_TAG(SPI1_SCK_PIN), IO_TAG(SPI1_MISO_PIN), IO_TAG(SPI1_MOSI_PIN), SPI1_TX_DMA_OPT, SPI1_RX_DMA_OPT },
@@ -53,6 +72,7 @@ const spiDefaultConfig_t spiDefaultConfig[] = {
     { SPIDEV_4, IO_TAG(SPI4_SCK_PIN), IO_TAG(SPI4_MISO_PIN), IO_TAG(SPI4_MOSI_PIN), SPI4_TX_DMA_OPT, SPI4_RX_DMA_OPT },
 #endif
 };
+#endif
 
 PG_REGISTER_ARRAY_WITH_RESET_FN(spiPinConfig_t, SPIDEV_COUNT, spiPinConfig, PG_SPI_PIN_CONFIG, 1);
 

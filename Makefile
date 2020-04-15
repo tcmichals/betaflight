@@ -16,7 +16,7 @@
 #
 
 # The target to build, see VALID_TARGETS below
-TARGET    ?= STM32F405
+TARGET    ?= LINUX
 
 # Compile-time options
 OPTIONS   ?=
@@ -49,6 +49,14 @@ SERIAL_DEVICE   ?= $(firstword $(wildcard /dev/ttyACM*) $(firstword $(wildcard /
 # Flash size (KB).  Some low-end chips actually have more flash than advertised, use this to override.
 FLASH_SIZE ?=
 
+FLIGHT_CON ?= PC
+ifeq ($(FLIGHT_CON), PC)
+    COMPILER_PREFIX := 
+    $(info    PC TARGET)
+else
+$(info    EMBEDDED LINUX TARGET)
+COMPILER_PREFIX := 
+endif
 
 ###############################################################################
 # Things that need to be maintained as the source changes
@@ -108,7 +116,7 @@ FEATURE_CUT_LEVEL_SUPPLIED := $(FEATURE_CUT_LEVEL)
 FEATURE_CUT_LEVEL =
 
 # The list of targets to build for 'pre-push'
-PRE_PUSH_TARGET_LIST ?= STM32F405 STM32F411 STM32F7X2 STM32F745 NUCLEOH743 SITL test-representative
+PRE_PUSH_TARGET_LIST ?= STM32F405 STM32F411 STM32F7X2 STM32F745 NUCLEOH743 SITL LINUX test-representative
 
 include $(ROOT)/make/targets.mk
 
@@ -267,6 +275,29 @@ CFLAGS     += $(ARCH_FLAGS) \
               -MMD -MP \
               $(EXTRA_FLAGS)
 
+CXXFLAGS     += $(ARCH_FLAGS) \
+              $(addprefix -D,$(OPTIONS)) \
+              $(addprefix -I,$(INCLUDE_DIRS)) \
+              $(DEBUG_FLAGS) \
+              -std=c++1z  \
+              -Wall -Wextra -Wunsafe-loop-optimizations -Wdouble-promotion \
+              -ffunction-sections \
+              -fdata-sections \
+              -fno-common \
+              -pedantic \
+              $(DEVICE_FLAGS) \
+              -D_GNU_SOURCE \
+              -DUSE_STDPERIPH_DRIVER \
+              -D$(TARGET) \
+              $(TARGET_FLAGS) \
+              -D'__FORKNAME__="$(FORKNAME)"' \
+              -D'__TARGET__="$(TARGET)"' \
+              -D'__REVISION__="$(REVISION)"' \
+              -save-temps=obj \
+              -MMD -MP \
+              $(EXTRA_FLAGS)
+
+
 ASFLAGS     = $(ARCH_FLAGS) \
               $(DEBUG_FLAGS) \
               -x assembler-with-cpp \
@@ -401,7 +432,7 @@ endif
 
 $(TARGET_ELF): $(TARGET_OBJS) $(LD_SCRIPT)
 	@echo "Linking $(TARGET)" "$(STDOUT)"
-	$(V1) $(CROSS_CC) -o $@ $(filter-out %.ld,$^) $(LD_FLAGS)
+	$(V1) $(CROSS_CXX) -o $@ $(filter-out %.ld,$^) $(LD_FLAGS)
 	$(V1) $(SIZE) $(TARGET_ELF)
 
 # Compile
@@ -433,6 +464,38 @@ $(OBJECT_DIR)/$(TARGET)/%.o: %.c
 				$(call compile_file,size optimised,$(CC_SIZE_OPTIMISATION)) \
 			, \
 				$(call compile_file,optimised,$(CC_DEFAULT_OPTIMISATION)) \
+			) \
+		) \
+	)
+endif
+
+## compile_file takes two arguments: (1) optimisation description string and (2) optimisation compiler flag
+define compile_file_cxx
+	echo "%% ($(1)) $<" "$(STDOUT)" && \
+	$(CROSS_CXX) -c -o $@ $(CXXFLAGS) $(2) $<
+endef
+
+ifeq ($(DEBUG),GDB)
+$(OBJECT_DIR)/$(TARGET)/%.o: %.cxx
+	$(V1) mkdir -p $(dir $@)
+	$(V1) $(if $(findstring $<,$(NOT_OPTIMISED_SRC)), \
+		$(call compile_file_cxx,not optimised, $(CC_NO_OPTIMISATION)) \
+	, \
+		$(call compile_file_cxx,debug,$(CC_DEBUG_OPTIMISATION)) \
+	)
+else
+$(OBJECT_DIR)/$(TARGET)/%.o: %.cxx
+	$(V1) mkdir -p $(dir $@)
+	$(V1) $(if $(findstring $<,$(NOT_OPTIMISED_SRC)), \
+		$(call compile_file_cxx,not optimised,$(CC_NO_OPTIMISATION)) \
+	, \
+		$(if $(findstring $(subst ./src/main/,,$<),$(SPEED_OPTIMISED_SRC)), \
+			$(call compile_file_cxx,speed optimised,$(CC_SPEED_OPTIMISATION)) \
+		, \
+			$(if $(findstring $(subst ./src/main/,,$<),$(SIZE_OPTIMISED_SRC)), \
+				$(call compile_file_cxx,size optimised,$(CC_SIZE_OPTIMISATION)) \
+			, \
+				$(call compile_file_cxx,optimised,$(CC_DEFAULT_OPTIMISATION)) \
 			) \
 		) \
 	)

@@ -290,7 +290,9 @@ zip_clean:
 # Set up paths to tools
 #
 ##############################
-
+ifeq ($(TARGET), LINUX)
+	$(info is **************************** Lunix)
+else
 ifeq ($(shell [ -d "$(ARM_SDK_DIR)" ] && echo "exists"), exists)
   ARM_SDK_PREFIX := $(ARM_SDK_DIR)/bin/arm-none-eabi-
 else ifeq (,$(findstring _install,$(MAKECMDGOALS)))
@@ -303,6 +305,7 @@ else ifeq (,$(findstring _install,$(MAKECMDGOALS)))
 
   # ARM tookchain is in the path, and the version is what's required.
   ARM_SDK_PREFIX ?= arm-none-eabi-
+endif
 endif
 
 ifeq ($(shell [ -d "$(ZIP_DIR)" ] && echo "exists"), exists)
