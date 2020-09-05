@@ -61,21 +61,15 @@
 #include "flight/mixer.h"
 
 #include "io/rcdevice_cam.h"
+#include "io/usb_cdc_hid.h"
 
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
 #include "pg/rx.h"
-#ifdef USE_USB_CDC_HID
-#include "pg/usb.h"
-#endif
 
 #include "osd/osd.h"
 
 #include "rx/rx.h"
-
-#ifdef USE_USB_CDC_HID
-#include "sensors/battery.h"
-#endif
 
 // DisplayPort management
 
@@ -356,6 +350,19 @@ static void cmsPadToSize(char *buf, int size)
 #endif
 }
 
+static int cmsDisplayWrite(displayPort_t *instance, uint8_t x, uint8_t y, uint8_t attr, const char *s)
+{
+    char buffer[strlen(s) + 1];
+    char* b = buffer;
+    while (*s) {
+        char c = toupper(*s++);
+        *b++ = (c < 0x20 || c > 0x5F) ? ' ' : c; // limit to alphanumeric and punctuation
+    }
+    *b++ = '\0';
+
+    return displayWrite(instance, x, y, attr, buffer);
+}
+
 static int cmsDrawMenuItemValue(displayPort_t *pDisplay, char *buff, uint8_t row, uint8_t maxSize)
 {
     int colpos;
@@ -367,7 +374,7 @@ static int cmsDrawMenuItemValue(displayPort_t *pDisplay, char *buff, uint8_t row
 #else
     colpos = smallScreen ? rightMenuColumn - maxSize : rightMenuColumn;
 #endif
-    cnt = displayWrite(pDisplay, colpos, row, DISPLAYPORT_ATTR_NONE, buff);
+    cnt = cmsDisplayWrite(pDisplay, colpos, row, DISPLAYPORT_ATTR_NONE, buff);
     return cnt;
 }
 
@@ -497,7 +504,7 @@ static int cmsDrawMenuEntry(displayPort_t *pDisplay, const OSD_Entry *p, uint8_t
 
     case OME_INT16:
         if (IS_PRINTVALUE(*flags) && p->data) {
-            OSD_UINT16_t *ptr = p->data;
+            OSD_INT16_t *ptr = p->data;
             itoa(*ptr->val, buff, 10);
             cnt = cmsDrawMenuItemValue(pDisplay, buff, row, CMS_NUM_FIELD_LEN);
             CLR_PRINTVALUE(*flags);
@@ -516,7 +523,7 @@ static int cmsDrawMenuEntry(displayPort_t *pDisplay, const OSD_Entry *p, uint8_t
     case OME_Label:
         if (IS_PRINTVALUE(*flags) && p->data) {
             // A label with optional string, immediately following text
-            cnt = displayWrite(pDisplay, leftMenuColumn + 1 + (uint8_t)strlen(p->text), row, DISPLAYPORT_ATTR_NONE, p->data);
+            cnt = cmsDisplayWrite(pDisplay, leftMenuColumn + 1 + (uint8_t)strlen(p->text), row, DISPLAYPORT_ATTR_NONE, p->data);
             CLR_PRINTVALUE(*flags);
         }
         break;
@@ -532,9 +539,9 @@ static int cmsDrawMenuEntry(displayPort_t *pDisplay, const OSD_Entry *p, uint8_t
 #ifdef CMS_MENU_DEBUG
         // Shouldn't happen. Notify creator of this menu content
 #ifdef CMS_OSD_RIGHT_ALIGNED_VALUES
-        cnt = displayWrite(pDisplay, rightMenuColumn - 6, row, DISPLAYPORT_ATTR_NONE, "BADENT");
+        cnt = cmsDisplayWrite(pDisplay, rightMenuColumn - 6, row, DISPLAYPORT_ATTR_NONE, "BADENT");
 #else
-        cnt = displayWrite(pDisplay, rightMenuColumn, row, DISPLAYPORT_ATTR_NONE, "BADENT");
+        cnt = cmsDisplayWrite(pDisplay, rightMenuColumn, row, DISPLAYPORT_ATTR_NONE, "BADENT");
 #endif
 #endif
         break;
@@ -642,7 +649,7 @@ static void cmsDrawMenu(displayPort_t *pDisplay, uint32_t currentTimeUs)
 #endif
 
     if (pDisplay->cursorRow >= 0 && currentCtx.cursorRow != pDisplay->cursorRow) {
-        room -= displayWrite(pDisplay, leftMenuColumn, top + pDisplay->cursorRow * linesPerMenuItem, DISPLAYPORT_ATTR_NONE, " ");
+        room -= cmsDisplayWrite(pDisplay, leftMenuColumn, top + pDisplay->cursorRow * linesPerMenuItem, DISPLAYPORT_ATTR_NONE, " ");
     }
 
     if (room < 30) {
@@ -650,7 +657,7 @@ static void cmsDrawMenu(displayPort_t *pDisplay, uint32_t currentTimeUs)
     }
 
     if (pDisplay->cursorRow != currentCtx.cursorRow) {
-        room -= displayWrite(pDisplay, leftMenuColumn, top + currentCtx.cursorRow * linesPerMenuItem, DISPLAYPORT_ATTR_NONE, ">");
+        room -= cmsDisplayWrite(pDisplay, leftMenuColumn, top + currentCtx.cursorRow * linesPerMenuItem, DISPLAYPORT_ATTR_NONE, ">");
         pDisplay->cursorRow = currentCtx.cursorRow;
     }
 
@@ -672,7 +679,7 @@ static void cmsDrawMenu(displayPort_t *pDisplay, uint32_t currentTimeUs)
         if (IS_PRINTLABEL(runtimeEntryFlags[i])) {
             uint8_t coloff = leftMenuColumn;
             coloff += (p->type == OME_Label) ? 0 : 1;
-            room -= displayWrite(pDisplay, coloff, top + i * linesPerMenuItem, DISPLAYPORT_ATTR_NONE, p->text);
+            room -= cmsDisplayWrite(pDisplay, coloff, top + i * linesPerMenuItem, DISPLAYPORT_ATTR_NONE, p->text);
             CLR_PRINTLABEL(runtimeEntryFlags[i]);
             if (room < 30) {
                 return;
@@ -786,6 +793,10 @@ void cmsMenuOpen(void)
         }
     }
     displayGrab(pCurrentDisplay); // grab the display for use by the CMS
+    // FIXME this should probably not have a dependency on the OSD or OSD slave code
+#ifdef USE_OSD
+    resumeRefreshAt = 0;
+#endif
 
     if ( pCurrentDisplay->cols < NORMAL_SCREEN_MIN_COLS) {
       smallScreen       = true;
@@ -862,9 +873,10 @@ const void *cmsMenuExit(displayPort_t *pDisplay, const void *ptr)
 
     if ((exitType == CMS_EXIT_SAVEREBOOT) || (exitType == CMS_POPUP_SAVEREBOOT) || (exitType == CMS_POPUP_EXITREBOOT)) {
         displayClearScreen(pDisplay);
-        displayWrite(pDisplay, 5, 3, DISPLAYPORT_ATTR_NONE, "REBOOTING...");
+        cmsDisplayWrite(pDisplay, 5, 3, DISPLAYPORT_ATTR_NONE, "REBOOTING...");
 
-        displayResync(pDisplay); // Was max7456RefreshAll(); why at this timing?
+        // Flush display
+        displayRedraw(pDisplay);
 
         stopMotors();
         motorShutdown();
@@ -1184,7 +1196,7 @@ static void cmsUpdate(uint32_t currentTimeUs)
         || rcdeviceInMenu
 #endif
 #ifdef USE_USB_CDC_HID
-        || (getBatteryCellCount() == 0 && usbDevConfig()->type == COMPOSITE)
+        || cdcDeviceIsMayBeActive() // If this target is used as a joystick, we should leave here.
 #endif
        ) {
         return;

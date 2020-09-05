@@ -112,7 +112,7 @@ bool busRawReadRegisterBuffer(const busDevice_t *busdev, uint8_t reg, uint8_t *d
 #ifdef USE_SPI
     if (busdev->bustype ==  BUSTYPE_SPI) {
 #ifdef USE_SPI_TRANSACTION
-        spiBusTransactionSetup(bus);
+        spiBusTransactionSetup(busdev);
 #endif
         return spiBusRawReadRegisterBuffer(busdev, reg, data, length);
     } else
@@ -153,7 +153,7 @@ bool busRawReadRegisterBufferStart(const busDevice_t *busdev, uint8_t reg, uint8
 #ifdef USE_SPI
     if (busdev->bustype ==  BUSTYPE_SPI) {
 #ifdef USE_SPI_TRANSACTION
-        spiBusTransactionSetup(bus);
+        spiBusTransactionSetup(busdev);
 #endif
         return spiBusRawReadRegisterBuffer(busdev, reg, data, length);
     } else
@@ -226,4 +226,28 @@ uint8_t busReadRegister(const busDevice_t *busdev, uint8_t reg)
     busReadRegisterBuffer(busdev, reg, &data, 1);
     return data;
 #endif
+}
+
+void busDeviceRegister(const busDevice_t *busdev)
+{
+#if !defined(USE_SPI) && !defined(USE_I2C)
+    UNUSED(busdev);
+#endif
+
+    switch (busdev->bustype) {
+#if defined(USE_SPI)
+    case BUSTYPE_SPI:
+        spiBusDeviceRegister(busdev);
+
+        break;
+#endif
+#if defined(USE_I2C)
+    case BUSTYPE_I2C:
+        i2cBusDeviceRegister(busdev);
+
+        break;
+#endif
+    default:
+        break;
+    }
 }

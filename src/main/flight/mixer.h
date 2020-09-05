@@ -91,7 +91,6 @@ PG_DECLARE(mixerConfig_t, mixerConfig);
 extern const mixer_t mixers[];
 extern float motor[MAX_SUPPORTED_MOTORS];
 extern float motor_disarmed[MAX_SUPPORTED_MOTORS];
-extern float motorOutputHigh, motorOutputLow;
 struct rxConfig_s;
 
 uint8_t getMotorCount(void);
@@ -106,7 +105,7 @@ void mixerInitProfile(void);
 void mixerConfigureOutput(void);
 
 void mixerResetDisarmedMotors(void);
-void mixTable(timeUs_t currentTimeUs, uint8_t vbatPidCompensation);
+void mixTable(timeUs_t currentTimeUs);
 void stopMotors(void);
 void writeMotors(void);
 
@@ -115,4 +114,8 @@ bool mixerIsTricopter(void);
 void mixerSetThrottleAngleCorrection(int correctionValue);
 float mixerGetThrottle(void);
 mixerMode_e getMixerMode(void);
+bool mixerModeIsFixedWing(mixerMode_e mixerMode);
 bool isFixedWing(void);
+
+float getMotorOutputLow(void);
+float getMotorOutputHigh(void);
