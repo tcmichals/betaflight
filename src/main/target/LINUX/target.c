@@ -121,7 +121,62 @@ void failureMode(failureMode_e mode) {
 void indicateFailure(failureMode_e mode, int repeatCount)
 {
     UNUSED(repeatCount);
-    printf("Failure LED flash for: [failureMode]!!! %d\n", mode);
+    char *errStr = NULL;
+    switch(mode)
+    {
+        case  FAILURE_DEVELOPER:
+            errStr = "FAILURE_DEVELOPER";
+        break;
+        case FAILURE_MISSING_ACC:
+            errStr = "FAILURE_MISSING_ACC";
+        break;
+        case FAILURE_ACC_INIT:
+            errStr = "FAILURE_ACC_INIT";
+        break;        
+        case FAILURE_ACC_INCOMPATIBLE:
+            errStr = "FAILURE_ACC_INCOMPATIBLE";
+        break;        
+        case FAILURE_INVALID_EEPROM_CONTENTS:
+            errStr = "FAILURE_INVALID_EEPROM_CONTENTS";
+        break;        
+        case FAILURE_CONFIG_STORE_FAILURE:
+            errStr = "FAILURE_CONFIG_STORE_FAILURE";
+        break;        
+        case FAILURE_GYRO_INIT_FAILED:
+            errStr = "FAILURE_GYRO_INIT_FAILED";
+        break;        
+        case FAILURE_FLASH_READ_FAILED:
+            errStr = "FAILURE_FLASH_READ_FAILED";
+        break;        
+        case FAILURE_FLASH_WRITE_FAILED:
+            errStr = "FAILURE_FLASH_WRITE_FAILED";
+        break;        
+        case FAILURE_FLASH_INIT_FAILED:
+            errStr = "FAILURE_FLASH_INIT_FAILED";
+        break;        
+        case FAILURE_EXTERNAL_FLASH_READ_FAILED:
+            errStr = "FAILURE_EXTERNAL_FLASH_READ_FAILED";
+        break;        
+        case FAILURE_EXTERNAL_FLASH_WRITE_FAILED:
+            errStr = "FAILURE_EXTERNAL_FLASH_WRITE_FAILED";
+        break;        
+        case  FAILURE_EXTERNAL_FLASH_INIT_FAILED:
+            errStr = "FAILURE_EXTERNAL_FLASH_INIT_FAILED";
+        break;        
+        case FAILURE_SDCARD_READ_FAILED:
+            errStr = "FAILURE_SDCARD_READ_FAILED";
+        break;        
+        case FAILURE_SDCARD_WRITE_FAILED:
+            errStr = "FAILURE_SDCARD_WRITE_FAILED";
+        break;        
+        case FAILURE_SDCARD_INITIALISATION_FAILED:
+            errStr = "FAILURE_SDCARD_INITIALISATION_FAILED";
+        break;
+        default:
+            errStr = "Not known";
+        break;        
+    }
+    printf("Failure LED flash for: %s %d\n", errStr, mode);
 }
 
 // Time part

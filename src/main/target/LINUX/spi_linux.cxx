@@ -363,12 +363,28 @@ bool spiBusWriteRegister(const busDevice_t *bus, uint8_t reg, uint8_t data)
 
     return spiTransfer(bus->busdev_u.spi.instance, tx, rx, sizeof(tx));
 }
+bool spiBusRawReadRegisterBuffer(const busDevice_t *bus, uint8_t reg, uint8_t *data, uint8_t length)
+{
+    uint8_t tx_reg[255] = {0};
+    uint8_t rx_reg[255] = {0};
+    tx_reg[0] = reg;
+    int _spiLen = length + 1;
+
+    bool rc = spiTransfer(bus->busdev_u.spi.instance, tx_reg, rx_reg, _spiLen);
+
+    if (rc)
+        memcpy(data, rx_reg + 1, length);
+
+    return rc;
+}
+
 
 bool spiBusReadRegisterBuffer(const busDevice_t *bus,
                               uint8_t reg,
                               uint8_t *data,
                               uint8_t length)
 {
+#if 0
     uint8_t tx_reg[255] = {0};
     uint8_t rx_reg[255] = {0};
     tx_reg[0] = reg | 0x80u;
@@ -380,6 +396,9 @@ bool spiBusReadRegisterBuffer(const busDevice_t *bus,
         memcpy(data, rx_reg + 1, length);
 
     return rc;
+#else
+    return spiBusRawReadRegisterBuffer(bus, reg | 0x80, data, length);
+#endif
 }
 
 uint8_t spiBusReadRegister(const busDevice_t *bus, uint8_t reg)

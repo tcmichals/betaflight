@@ -163,25 +163,43 @@ bool isPWMDataBeingReceived(void)
 }
 
 
+/**
+ * @brief 
+ * 
+ * @param pwmConfig 
+ */
 void pwmRxInit(const pwmConfig_t *pwmConfig)
 {
   
 }
 
 #define FIRST_PWM_PORT 0
-
-
-
+/**
+ * @brief 
+ * 
+ * @param ppmConfig 
+ */
 void ppmRxInit(const ppmConfig_t *ppmConfig)
 {
 
 }
-
+/**
+ * @brief 
+ * 
+ * @param channel 
+ * @return uint16_t 
+ */
 uint16_t ppmRead(uint8_t channel)
 {
     return captures[channel];
 }
 
+/**
+ * @brief 
+ * 
+ * @param channel 
+ * @return uint16_t 
+ */
 uint16_t pwmRead(uint8_t channel)
 {
     // update the count the pwmCallback should clear it.
@@ -189,6 +207,18 @@ uint16_t pwmRead(uint8_t channel)
     return captures[channel];
 }
 
+/**
+ * @brief 
+ * 
+ * @param channel_1 
+ * @param channel_2 
+ * @param channel_3 
+ * @param channel_4 
+ * @param channel_5 
+ * @param channel_6 
+ * @return true 
+ * @return false 
+ */
 bool pwmCallback(   uint32_t channel_1,
                     uint32_t channel_2,
                     uint32_t channel_3,

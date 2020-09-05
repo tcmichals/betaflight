@@ -10,7 +10,7 @@ tcmichals
 
 extern "C"
 {
-    #include "platform.h"
+#include "platform.h"
 }
 
 #if defined(USE_I2C) && !defined(SOFT_I2C)
@@ -26,7 +26,6 @@ extern "C"
 
 #include "drivers/bus_i2c.h"
 #include "drivers/bus_i2c_impl.h"
-
 }
 
 #include <vector>
@@ -52,26 +51,24 @@ extern "C"
 
 //bus_i2c
 
-
 /* bus_i2c_hal.c */
 i2cDevice_t i2cDevice[I2CDEV_COUNT];
 
-uint16_t i2cErrorCount =0 ;
+uint16_t i2cErrorCount = 0;
 
-#define CLOCKSPEED 800000    // i2c clockspeed 400kHz default (conform specs), 800kHz  and  1200kHz (Betaflight default)
-
+#define CLOCKSPEED 800000 // i2c clockspeed 400kHz default (conform specs), 800kHz  and  1200kHz (Betaflight default)
 
 typedef struct
 {
- int fd;
- int errorCount;
- const char path[PATH_MAX];
-     
-}linuxI2CDevice_t;
+    int fd;
+    int errorCount;
+    const char path[PATH_MAX];
+
+} linuxI2CDevice_t;
 
 #define STRINGIFY(s) XSTRINGIFY(s)
 #define XSTRINGIFY(s) #s
-  
+
 #pragma message "Device count " STRINGIFY(I2CDEV_COUNT)
 const i2cHardware_t i2cHardware[I2CDEV_COUNT] = {};
 linuxI2CDevice_t i2cLinuxHardware[I2CDEV_COUNT] = {
@@ -90,7 +87,7 @@ linuxI2CDevice_t i2cLinuxHardware[I2CDEV_COUNT] = {
     },
 #endif
 #ifdef USE_I2C_DEVICE_3
-    { 
+    {
         .fd = -1,
         .errorCount = 0,
         .path = "/dev/i2c-2",
@@ -114,11 +111,11 @@ static bool i2cHandleHardwareFailure(I2CDevice device)
     return false;
 }
 
-
 // Blocking write
 bool i2cWrite(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t data)
 {
-    if (device == I2CINVALID || device > I2CDEV_COUNT) {
+    if (device == I2CINVALID || device > I2CDEV_COUNT)
+    {
         return false;
     }
 
@@ -128,41 +125,45 @@ bool i2cWrite(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t data)
 // Non-blocking write
 bool i2cWriteBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data)
 {
-    if (device == I2CINVALID || device > I2CDEV_COUNT) {
+    if (device == I2CINVALID || device > I2CDEV_COUNT)
+    {
         return false;
     }
 
     int8_t count = 0;
     uint8_t buf[128];
     linuxI2CDevice_t *pI2CHw = &i2cLinuxHardware[device];
-        
-    if (len_ > 127) {
+
+    if (len_ > 127)
+    {
         fprintf(stderr, "Byte write count (%d) > 127\n", len_);
         return i2cHandleHardwareFailure(device);
     }
 
-    if (pI2CHw->fd < 0) {
+    if (pI2CHw->fd < 0)
+    {
         fprintf(stderr, "Failed to open device: %s\n", strerror(errno));
         return i2cHandleHardwareFailure(device);
     }
-    
-    if (ioctl(pI2CHw->fd, I2C_SLAVE, addr_) < 0) {
+
+    if (ioctl(pI2CHw->fd, I2C_SLAVE, addr_) < 0)
+    {
         fprintf(stderr, "Failed to select device: %s\n", strerror(errno));
         return i2cHandleHardwareFailure(device);
     }
-    
+
     buf[0] = reg_;
-    memcpy(buf+1,data,len_);
-    count = write(pI2CHw->fd, buf, len_+1);
-    
-    if (count < 0) 
+    memcpy(buf + 1, data, len_);
+    count = write(pI2CHw->fd, buf, len_ + 1);
+
+    if (count < 0)
     {
-        fprintf(stderr, "%s Failed to write device(%d): %s\n", __func__,len_, strerror(errno));
+        fprintf(stderr, "%s Failed to write device(%d): %s\n", __func__, len_, strerror(errno));
         return i2cHandleHardwareFailure(device);
-    } 
-    else if (count != len_+1) 
+    }
+    else if (count != len_ + 1)
     {
-        fprintf(stderr, "Short write to device, expected %d, got %d\n", len_+1, count);
+        fprintf(stderr, "Short write to device, expected %d, got %d\n", len_ + 1, count);
         return i2cHandleHardwareFailure(device);
     }
 
@@ -170,41 +171,42 @@ bool i2cWriteBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len_,
 }
 
 // Blocking read
-bool i2cRead(I2CDevice device, 
-            uint8_t addr_, 
-            uint8_t reg_, 
-            uint8_t len, 
-            uint8_t* buf)
+bool i2cRead(I2CDevice device,
+             uint8_t addr_,
+             uint8_t reg_,
+             uint8_t len,
+             uint8_t *buf)
 {
-    
-    if (device == I2CINVALID || device > I2CDEV_COUNT) {
+
+    if (device == I2CINVALID || device > I2CDEV_COUNT)
+    {
         return false;
     }
-   int8_t count = 0;
+    int8_t count = 0;
     linuxI2CDevice_t *pI2CHw = &i2cLinuxHardware[device];
-       
+
     if (pI2CHw->fd < 0)
         return false;
-    
-    if (ioctl(pI2CHw->fd, I2C_SLAVE, addr_) < 0) 
+
+    if (ioctl(pI2CHw->fd, I2C_SLAVE, addr_) < 0)
     {
         fprintf(stderr, "Failed to select device: %s\n", strerror(errno));
-        return(false);
+        return (false);
     }
-    
-    if (write(pI2CHw->fd, &reg_, 1) != 1) 
+
+    if (write(pI2CHw->fd, &reg_, 1) != 1)
     {
         fprintf(stderr, "%s Failed to write reg: %s\n", __func__, strerror(errno));
         return i2cHandleHardwareFailure(device);
     }
     count = read(pI2CHw->fd, buf, len);
 
-    if (count < 0) 
+    if (count < 0)
     {
         fprintf(stderr, "Failed to read device(%d): %s\n", count, strerror(errno));
         return i2cHandleHardwareFailure(device);
-    } 
-    else if (count != len) 
+    }
+    else if (count != len)
     {
         fprintf(stderr, "Short read  from device, expected %d, got %d\n", len, count);
         return i2cHandleHardwareFailure(device);
@@ -214,43 +216,44 @@ bool i2cRead(I2CDevice device,
 }
 
 // Non-blocking read
-bool i2cReadBuffer( I2CDevice device, 
-                    uint8_t addr_, 
-                    uint8_t reg_, 
-                    uint8_t len, 
-                    uint8_t* buf)
+bool i2cReadBuffer(I2CDevice device,
+                   uint8_t addr_,
+                   uint8_t reg_,
+                   uint8_t len,
+                   uint8_t *buf)
 {
-    if (device == I2CINVALID || device > I2CDEV_COUNT) {
+    if (device == I2CINVALID || device > I2CDEV_COUNT)
+    {
         return false;
     }
 
     int8_t count = 0;
     linuxI2CDevice_t *pI2CHw = &i2cLinuxHardware[device];
-       
+
     if (pI2CHw->fd < 0)
     {
-         return i2cHandleHardwareFailure(device);
+        return i2cHandleHardwareFailure(device);
     }
-    
-    if (ioctl(pI2CHw->fd, I2C_SLAVE, addr_) < 0) 
+
+    if (ioctl(pI2CHw->fd, I2C_SLAVE, addr_) < 0)
     {
         fprintf(stderr, "Failed to select device: %s\n", strerror(errno));
         return i2cHandleHardwareFailure(device);
     }
-    
-    if (write(pI2CHw->fd, &reg_, 1) != 1) 
+
+    if (write(pI2CHw->fd, &reg_, 1) != 1)
     {
         fprintf(stderr, "%s Failed to write reg: %s\n", __func__, strerror(errno));
-         return i2cHandleHardwareFailure(device);
+        return i2cHandleHardwareFailure(device);
     }
     count = read(pI2CHw->fd, buf, len);
 
-    if (count < 0) 
+    if (count < 0)
     {
         fprintf(stderr, "Failed to read device(%d): %s\n", count, strerror(errno));
         return i2cHandleHardwareFailure(device);
-    } 
-    else if (count != len) 
+    }
+    else if (count != len)
     {
         fprintf(stderr, "Short read  from device, expected %d, got %d\n", len, count);
         return i2cHandleHardwareFailure(device);
@@ -269,26 +272,22 @@ bool i2cBusy(I2CDevice device, bool *error)
 void i2cInit(I2CDevice device)
 {
     std::cout << __PRETTY_FUNCTION__ << " " << __LINE__ << std::endl;
-    if (device == I2CINVALID) {
+    if (device == I2CINVALID)
+    {
         return;
     }
 
     linuxI2CDevice_t *pI2CHw = &i2cLinuxHardware[device];
 
     pI2CHw->fd = open(pI2CHw->path, O_RDWR);
-    
-    if( pI2CHw->fd  < 0)
+
+    if (pI2CHw->fd < 0)
         return;
-   
 }
 
 uint16_t i2cGetErrorCounter(void)
 {
     return i2cErrorCount;
 }
-
-
-
-
 
 #endif
